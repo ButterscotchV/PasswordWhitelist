@@ -1,7 +1,7 @@
 package io.github.gronnmann.passwordwhitelist
 
+import net.md_5.bungee.api.ChatColor
 import org.bukkit.Bukkit
-import org.bukkit.ChatColor
 import org.bukkit.GameMode
 import org.bukkit.configuration.file.FileConfiguration
 import org.bukkit.configuration.file.YamlConfiguration
@@ -77,7 +77,7 @@ class PasswordWhitelist : JavaPlugin(), Listener {
         if (approvedList.contains(player)) {
             return true
         } else {
-            if (sendMsg) p.sendMessage(ChatColor.RED.char + "Enter the password to verify your account.")
+            if (sendMsg) p.sendMessage(ChatColor.RED.toString() + "Enter the password to verify your account.")
             return false
         }
     }
@@ -101,12 +101,12 @@ class PasswordWhitelist : JavaPlugin(), Listener {
             approvedList.add(e.player.uniqueId.toString())
             saveApproved()
 
-            e.player.sendMessage(ChatColor.GREEN.char + "Verified successfully.")
+            e.player.sendMessage(ChatColor.GREEN.toString() + "Verified successfully.")
             Bukkit.getScheduler().runTask(this, Runnable {
                 e.player.gameMode = Bukkit.getServer().defaultGameMode
             })
         } else {
-            e.player.sendMessage(ChatColor.RED.char + "Incorrect password, try again.")
+            e.player.sendMessage(ChatColor.RED.toString() + "Incorrect password, try again.")
         }
     }
 
