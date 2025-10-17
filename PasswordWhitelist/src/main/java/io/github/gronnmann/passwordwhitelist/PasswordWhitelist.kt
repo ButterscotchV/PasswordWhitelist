@@ -115,13 +115,12 @@ class PasswordWhitelist : JavaPlugin(), Listener {
             approvedList.add(e.player.uniqueId.toString())
             saveApproved()
 
-            if (whitelistOnSuccess) {
-                e.player.isWhitelisted = true
-            }
-
             e.player.sendMessage(ChatColor.GREEN.toString() + "Verified successfully.")
             Bukkit.getScheduler().runTask(this, Runnable {
-                e.player.gameMode = Bukkit.getServer().defaultGameMode
+                if (whitelistOnSuccess) {
+                    e.player.isWhitelisted = true
+                }
+                e.player.gameMode = server.defaultGameMode
             })
         } else {
             // Last fail count plus one for this failure
@@ -134,16 +133,18 @@ class PasswordWhitelist : JavaPlugin(), Listener {
                 // Reset the number of attempts (so if they're unbanned, they may try again)
                 e.player.removeMetadata(ATTEMPT_KEY, this)
 
-                if (banOnFail) {
-                    e.player.ban(
-                        ChatColor.RED.toString() + "Too many incorrect password attempts.",
-                        Duration.ofDays(14),
-                        name,
-                        true
-                    )
-                } else {
-                    e.player.kickPlayer(ChatColor.RED.toString() + "Too many incorrect password attempts.")
-                }
+                Bukkit.getScheduler().runTask(this, Runnable {
+                    if (banOnFail) {
+                        e.player.ban(
+                            ChatColor.RED.toString() + "Too many incorrect password attempts.",
+                            Duration.ofDays(14),
+                            name,
+                            true
+                        )
+                    } else {
+                        e.player.kickPlayer(ChatColor.RED.toString() + "Too many incorrect password attempts.")
+                    }
+                })
             } else {
                 // Save the new failure count
                 val newMeta = FixedMetadataValue(this, curFails)
