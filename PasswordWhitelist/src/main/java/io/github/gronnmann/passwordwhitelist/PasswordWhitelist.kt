@@ -20,9 +20,11 @@ import org.bukkit.event.player.PlayerDropItemEvent
 import org.bukkit.event.player.PlayerInteractEvent
 import org.bukkit.event.player.PlayerJoinEvent
 import org.bukkit.event.player.PlayerMoveEvent
+import org.bukkit.metadata.FixedMetadataValue
 import org.bukkit.plugin.java.JavaPlugin
 import java.io.File
 import java.io.IOException
+import java.time.Instant
 
 class PasswordWhitelist : JavaPlugin(), Listener {
     private lateinit var approvedFile: File
@@ -31,6 +33,11 @@ class PasswordWhitelist : JavaPlugin(), Listener {
     private lateinit var approvedList: MutableList<String>
 
     private var password: String? = null
+    private var whitelistOnSuccess: Boolean = false
+    private var banOnFail: Boolean = false
+    private var maxFails: Int = 3
+
+    private val ATTEMPT_KEY = "pw_attempts"
 
     override fun onEnable() {
         if (!dataFolder.exists()) dataFolder.mkdirs()
@@ -51,6 +58,9 @@ class PasswordWhitelist : JavaPlugin(), Listener {
         if (password == null) {
             logger.warning("Password was not configured, proceeding without a password.")
         }
+        whitelistOnSuccess = config.getBoolean("whitelistOnSuccess", false)
+        banOnFail = config.getBoolean("banOnFail", false)
+        maxFails = config.getInt("maxFails", 3)
 
         Bukkit.getPluginManager().registerEvents(this, this)
     }
@@ -72,9 +82,7 @@ class PasswordWhitelist : JavaPlugin(), Listener {
         // No password, consider player approved
         if (password.isNullOrEmpty()) return true
 
-        val player = p.uniqueId.toString()
-
-        if (approvedList.contains(player)) {
+        if (approvedList.contains(p.uniqueId.toString()) || p.isWhitelisted) {
             return true
         } else {
             if (sendMsg) p.sendMessage(ChatColor.RED.toString() + "Enter the password to verify your account.")
@@ -97,16 +105,51 @@ class PasswordWhitelist : JavaPlugin(), Listener {
         // Cancel all chat for unapproved players
         e.isCancelled = true
 
+        // If the password is correct
         if (e.message.trim() == password) {
+            // Reset the number of attempts
+            e.player.removeMetadata(ATTEMPT_KEY, this)
+
             approvedList.add(e.player.uniqueId.toString())
             saveApproved()
+
+            if (whitelistOnSuccess) {
+                e.player.isWhitelisted = true
+            }
 
             e.player.sendMessage(ChatColor.GREEN.toString() + "Verified successfully.")
             Bukkit.getScheduler().runTask(this, Runnable {
                 e.player.gameMode = Bukkit.getServer().defaultGameMode
             })
         } else {
-            e.player.sendMessage(ChatColor.RED.toString() + "Incorrect password, try again.")
+            // Last fail count plus one for this failure
+            val curFails = (e.player.getMetadata(ATTEMPT_KEY).firstOrNull {
+                it.owningPlugin?.name == name
+            }?.asInt() ?: 0) + 1
+
+            // If max failures is exceeded, remove the player
+            if (maxFails > 0 && curFails >= maxFails) {
+                // Reset the number of attempts (so if they're unbanned, they may try again)
+                e.player.removeMetadata(ATTEMPT_KEY, this)
+
+                if (banOnFail) {
+                    e.player.ban(
+                        ChatColor.RED.toString() + "Too many incorrect password attempts.", Instant.MAX, name, true
+                    )
+                } else {
+                    e.player.kickPlayer(ChatColor.RED.toString() + "Too many incorrect password attempts.")
+                }
+            } else {
+                // Save the new failure count
+                val newMeta = FixedMetadataValue(this, curFails)
+                e.player.setMetadata(ATTEMPT_KEY, newMeta)
+
+                if (maxFails > 0) {
+                    e.player.sendMessage(ChatColor.RED.toString() + "Incorrect password, try again ($curFails/$maxFails).")
+                } else {
+                    e.player.sendMessage(ChatColor.RED.toString() + "Incorrect password, try again.")
+                }
+            }
         }
     }
 

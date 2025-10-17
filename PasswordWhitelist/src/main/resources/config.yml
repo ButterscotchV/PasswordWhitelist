@@ -1,1 +1,4 @@
-password: entry
+password: CHANGE_ME
+whitelistOnSuccess: false
+banOnFail: false
+maxFails: 3
