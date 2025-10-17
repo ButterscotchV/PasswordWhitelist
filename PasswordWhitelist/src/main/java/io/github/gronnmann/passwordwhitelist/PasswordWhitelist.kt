@@ -24,7 +24,7 @@ import org.bukkit.metadata.FixedMetadataValue
 import org.bukkit.plugin.java.JavaPlugin
 import java.io.File
 import java.io.IOException
-import java.time.Instant
+import java.time.Duration
 
 class PasswordWhitelist : JavaPlugin(), Listener {
     private lateinit var approvedFile: File
@@ -136,7 +136,10 @@ class PasswordWhitelist : JavaPlugin(), Listener {
 
                 if (banOnFail) {
                     e.player.ban(
-                        ChatColor.RED.toString() + "Too many incorrect password attempts.", Instant.MAX, name, true
+                        ChatColor.RED.toString() + "Too many incorrect password attempts.",
+                        Duration.ofDays(14),
+                        name,
+                        true
                     )
                 } else {
                     e.player.kickPlayer(ChatColor.RED.toString() + "Too many incorrect password attempts.")
