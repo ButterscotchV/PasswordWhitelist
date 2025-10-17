@@ -57,6 +57,8 @@ class PasswordWhitelist : JavaPlugin(), Listener {
         password = config.getString("password")?.trim()
         if (password == null) {
             logger.warning("Password was not configured, proceeding without a password.")
+        } else if (password == "CHANGE_ME") {
+            logger.severe("Password is left as default! Please configure your server password.")
         }
         whitelistOnSuccess = config.getBoolean("whitelistOnSuccess", false)
         banOnFail = config.getBoolean("banOnFail", false)
